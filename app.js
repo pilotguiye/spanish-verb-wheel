@@ -3,10 +3,14 @@ const people = [
   { key: "tu", label: "tú", shortLabel: "tú", personIndex: 1 },
   { key: "usted", label: "usted", shortLabel: "usted", personIndex: 2 },
   { key: "andres", label: "Andrés", shortLabel: "Andrés", personIndex: 2 },
+  { key: "kim-kardashian", label: "Kim Kardashian", shortLabel: "Kim K.", personIndex: 2 },
+  { key: "jack-ma", label: "Jack Ma", shortLabel: "Jack Ma", personIndex: 2 },
   { key: "el", label: "él / ella / usted", shortLabel: "él", personIndex: 2 },
   { key: "pepe-yo", label: "Pepe y yo", shortLabel: "Pepe y yo", personIndex: 3 },
+  { key: "kim-yo", label: "Kim Kardashian y yo", shortLabel: "Kim y yo", personIndex: 3 },
   { key: "nosotros", label: "nosotros/as", shortLabel: "nos.", personIndex: 3 },
   { key: "paco-tu", label: "Paco y tú", shortLabel: "Paco y tú", personIndex: 4 },
+  { key: "jack-tu", label: "Jack Ma y tú", shortLabel: "Jack y tú", personIndex: 4 },
   { key: "vosotros", label: "vosotros/as", shortLabel: "vos.", personIndex: 4 },
   { key: "ustedes", label: "ustedes", shortLabel: "ustedes", personIndex: 5 },
   { key: "ana-ema", label: "Ana y Ema", shortLabel: "Ana y Ema", personIndex: 5 },
@@ -14,77 +18,90 @@ const people = [
 ];
 
 const tenses = [
-  { key: "present", label: "Indicativo · Presente", shortLabel: "Presente" },
+  { key: "present", label: "Indicativo · Presente", shortLabel: "Presente", zhLabel: "现在时" },
   {
     key: "presentPerfect",
     label: "Indicativo · Pretérito perfecto compuesto",
     shortLabel: "Perf. comp.",
+    zhLabel: "现在完成时",
     compound: "presentIndicative",
   },
   {
     key: "imperfect",
     label: "Indicativo · Pretérito imperfecto",
     shortLabel: "Imperfecto",
+    zhLabel: "过去未完成时",
   },
   {
     key: "preterite",
     label: "Indicativo · Pretérito perfecto simple",
     shortLabel: "Pretérito",
+    zhLabel: "简单过去时",
   },
   {
     key: "pluperfect",
     label: "Indicativo · Pretérito pluscuamperfecto",
     shortLabel: "Pluscuam.",
+    zhLabel: "过去完成时",
     compound: "imperfectIndicative",
   },
   {
     key: "future",
     label: "Indicativo · Futuro simple / Futuro",
     shortLabel: "Futuro",
+    zhLabel: "将来未完成时",
   },
   {
     key: "futurePerfect",
     label: "Indicativo · Futuro compuesto",
     shortLabel: "Fut. comp.",
+    zhLabel: "将来完成时",
     compound: "futureIndicative",
   },
   {
     key: "conditional",
     label: "Indicativo · Condicional simple",
     shortLabel: "Condic.",
+    zhLabel: "简单条件时",
   },
   {
     key: "conditionalPerfect",
     label: "Indicativo · Condicional compuesto",
     shortLabel: "Cond. comp.",
+    zhLabel: "复合条件时",
     compound: "conditionalIndicative",
   },
   {
     key: "subjPresent",
     label: "Subjuntivo · Presente",
     shortLabel: "Subj. pres.",
+    zhLabel: "现在未完成时",
   },
   {
     key: "subjPresentPerfect",
     label: "Subjuntivo · Pretérito perfecto compuesto",
     shortLabel: "Subj. perf.",
+    zhLabel: "现在完成时",
     compound: "presentSubjunctive",
   },
   {
     key: "subjImperfect",
     label: "Subjuntivo · Pretérito imperfecto",
     shortLabel: "Subj. imp.",
+    zhLabel: "过去未完成时",
   },
   {
     key: "subjPluperfect",
     label: "Subjuntivo · Pretérito pluscuamperfecto",
     shortLabel: "Subj. plus.",
+    zhLabel: "过去完成时",
     compound: "imperfectSubjunctive",
   },
   {
     key: "imperativeAffirmative",
     label: "Imperativo · Afirmativo",
     shortLabel: "Imper. aff.",
+    zhLabel: "命令式",
     allowedPersonKeys: ["tu", "usted", "nosotros", "vosotros", "ustedes"],
   },
 ];
@@ -670,13 +687,27 @@ function renderTenseFilters() {
   els.tenseFilterGroups.innerHTML = "";
 
   [
-    ["Indicative", tenses.filter((tense) => tense.label.startsWith("Indicativo"))],
-    ["Subjunctive", tenses.filter((tense) => tense.label.startsWith("Subjuntivo"))],
-    ["Imperative", tenses.filter((tense) => tense.label.startsWith("Imperativo"))],
-  ].forEach(([groupName, groupTenses]) => {
+    {
+      name: "Indicative",
+      zhName: "陈述式",
+      tenses: tenses.filter((tense) => tense.label.startsWith("Indicativo")),
+    },
+    {
+      name: "Subjunctive",
+      zhName: "虚拟式",
+      tenses: tenses.filter((tense) => tense.label.startsWith("Subjuntivo")),
+    },
+    {
+      name: "Imperative",
+      zhName: "命令式",
+      tenses: tenses.filter((tense) => tense.label.startsWith("Imperativo")),
+    },
+  ].forEach(({ name: groupName, zhName: groupZhName, tenses: groupTenses }) => {
     const group = document.createElement("section");
     const groupHeader = document.createElement("div");
     const title = document.createElement("h3");
+    const titleName = document.createElement("span");
+    const titleTranslation = document.createElement("span");
     const controls = document.createElement("div");
     const selectButton = document.createElement("button");
     const clearButton = document.createElement("button");
@@ -684,7 +715,10 @@ function renderTenseFilters() {
 
     group.className = "tense-filter-group";
     groupHeader.className = "tense-filter-group-header";
-    title.textContent = groupName;
+    titleName.textContent = groupName;
+    titleTranslation.textContent = groupZhName;
+    titleTranslation.className = "tense-group-translation";
+    title.append(titleName, titleTranslation);
     controls.className = "tense-filter-group-controls";
     if (groupTenses.length > 1) {
       selectButton.type = "button";
@@ -701,12 +735,18 @@ function renderTenseFilters() {
       const label = document.createElement("label");
       const input = document.createElement("input");
       const span = document.createElement("span");
+      const spanishName = document.createElement("span");
+      const chineseName = document.createElement("span");
 
       label.className = "tense-chip";
       input.type = "checkbox";
       input.value = tense.key;
       input.checked = selectedTenseKeys.has(tense.key);
-      span.textContent = tense.label.replace(/^Indicativo · |^Subjuntivo · /, "");
+      spanishName.className = "tense-chip-name";
+      chineseName.className = "tense-chip-translation";
+      spanishName.textContent = tense.label.replace(/^Indicativo · |^Subjuntivo · |^Imperativo · /, "");
+      chineseName.textContent = tense.zhLabel;
+      span.append(spanishName, chineseName);
 
       input.addEventListener("change", () => {
         updateTenseSelection(tense.key, input.checked);

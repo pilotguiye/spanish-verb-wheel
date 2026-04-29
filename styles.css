@@ -390,11 +390,21 @@ h2 {
 }
 
 .tense-filter-group h3 {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 6px;
   margin: 0;
   color: var(--muted);
   font-size: 0.78rem;
   letter-spacing: 0;
   text-transform: uppercase;
+}
+
+.tense-group-translation {
+  color: rgba(104, 111, 108, 0.78);
+  font-size: 0.76rem;
+  font-weight: 720;
 }
 
 .tense-filter-group-controls {
@@ -430,21 +440,40 @@ h2 {
   pointer-events: none;
 }
 
-.tense-chip span {
-  display: block;
+.tense-chip > span {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  column-gap: 7px;
+  row-gap: 1px;
   border: 1px solid rgba(217, 213, 202, 0.94);
   border-radius: 8px;
-  padding: 8px 10px;
+  padding: 7px 10px;
   color: var(--muted);
   background: rgba(255, 255, 255, 0.54);
   font-size: 0.84rem;
   font-weight: 760;
-  line-height: 1.15;
+  line-height: 1.08;
   transition:
     border-color 160ms ease,
     background 160ms ease,
     color 160ms ease,
     transform 160ms ease;
+}
+
+.tense-chip-name,
+.tense-chip-translation {
+  display: inline;
+}
+
+.tense-chip-name {
+  color: inherit;
+}
+
+.tense-chip-translation {
+  color: rgba(104, 111, 108, 0.82);
+  font-size: 0.72rem;
+  font-weight: 690;
 }
 
 .tense-chip input:checked + span {
@@ -453,7 +482,11 @@ h2 {
   background: rgba(232, 237, 235, 0.9);
 }
 
-.tense-chip:hover span,
+.tense-chip input:checked + span .tense-chip-translation {
+  color: rgba(65, 90, 112, 0.82);
+}
+
+.tense-chip:hover > span,
 .tense-chip input:focus-visible + span {
   transform: translateY(-1px);
   border-color: rgba(177, 139, 75, 0.66);
@@ -687,10 +720,22 @@ button {
   .tense-filter-options {
     display: grid;
     grid-template-columns: 1fr;
+    gap: 6px;
   }
 
-  .tense-chip span {
-    padding: 10px 11px;
+  .tense-chip > span {
+    padding: 8px 10px;
+    column-gap: 6px;
+    row-gap: 0;
+    line-height: 1.05;
+  }
+
+  .tense-chip-name {
+    font-size: 0.81rem;
+  }
+
+  .tense-chip-translation {
+    font-size: 0.7rem;
   }
 
   .verb-slot {
