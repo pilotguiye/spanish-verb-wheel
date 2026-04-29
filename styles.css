@@ -71,6 +71,89 @@ input {
   overflow: hidden;
 }
 
+.celebration-layer {
+  position: fixed;
+  inset: 0;
+  z-index: 20;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+.genius-burst {
+  position: absolute;
+  top: 18%;
+  left: 50%;
+  width: min(520px, calc(100vw - 42px));
+  transform: translateX(-50%);
+  border: 1px solid rgba(255, 255, 255, 0.74);
+  border-radius: 8px;
+  padding: 20px 24px;
+  color: #fffaf0;
+  background:
+    linear-gradient(135deg, rgba(70, 95, 120, 0.96), rgba(73, 111, 91, 0.95)),
+    radial-gradient(circle at 20% 15%, rgba(214, 182, 106, 0.44), transparent 34%);
+  box-shadow: 0 26px 80px rgba(32, 38, 37, 0.22);
+  font-size: clamp(2rem, 7vw, 4.3rem);
+  font-family: Georgia, "Times New Roman", serif;
+  font-weight: 760;
+  letter-spacing: 0;
+  text-align: center;
+  text-wrap: balance;
+  animation: genius-pop 2300ms cubic-bezier(0.2, 0.9, 0.2, 1) forwards;
+}
+
+.firework-particle {
+  position: absolute;
+  width: 9px;
+  height: 9px;
+  border-radius: 999px;
+  box-shadow: 0 0 16px currentColor;
+  animation: firework-spark 1450ms cubic-bezier(0.16, 0.92, 0.24, 1) forwards;
+}
+
+@keyframes genius-pop {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, 18px) scale(0.88);
+  }
+
+  18% {
+    opacity: 1;
+    transform: translate(-50%, 0) scale(1);
+  }
+
+  78% {
+    opacity: 1;
+    transform: translate(-50%, -6px) scale(1.015);
+  }
+
+  100% {
+    opacity: 0;
+    transform: translate(-50%, -22px) scale(0.98);
+  }
+}
+
+@keyframes firework-spark {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(0.35);
+  }
+
+  12% {
+    opacity: 1;
+  }
+
+  72% {
+    opacity: 0.96;
+    transform: translate(calc(-50% + var(--x)), calc(-50% + var(--y))) scale(1);
+  }
+
+  100% {
+    opacity: 0;
+    transform: translate(calc(-50% + var(--x)), calc(-50% + var(--y) + 34px)) scale(0.2);
+  }
+}
+
 .practice-panel::after {
   content: "";
   position: absolute;
@@ -776,5 +859,22 @@ button {
     align-items: flex-start;
     min-height: auto;
     line-height: 1.45;
+  }
+
+  .genius-burst {
+    top: 16%;
+    padding: 16px 18px;
+  }
+
+  .firework-particle {
+    width: 7px;
+    height: 7px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .genius-burst,
+  .firework-particle {
+    animation-duration: 1ms;
   }
 }

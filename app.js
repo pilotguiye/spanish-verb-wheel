@@ -493,6 +493,7 @@ const els = {
   tenseFilterGroups: document.querySelector("#tense-filter-groups"),
   selectAllTensesButton: document.querySelector("#select-all-tenses"),
   clearAllTensesButton: document.querySelector("#clear-all-tenses"),
+  celebrationLayer: document.querySelector("#celebration-layer"),
 };
 
 const rollTimers = {
@@ -500,6 +501,7 @@ const rollTimers = {
   tense: [],
   person: [],
 };
+let audioContext;
 
 function loadState() {
   const fallback = { correct: 0, wrong: 0, streak: 0, mistakes: [] };
@@ -998,6 +1000,7 @@ function checkAnswer(rawAnswer) {
     state.correct += 1;
     state.streak += 1;
     setFeedback("correct", `Correct: ${expected}`);
+    celebrateStreak(state.streak);
   } else {
     state.wrong += 1;
     state.streak = 0;
@@ -1051,6 +1054,145 @@ function renderMistakes() {
 
     item.append(prompt, detail);
     els.mistakeList.append(item);
+  });
+}
+
+function celebrateStreak(streak) {
+  if (streak > 0 && streak % 20 === 0) {
+    showFireworks();
+    playFireworkSound();
+    playApplauseSound(1.15);
+    return;
+  }
+
+  if (streak === 10) {
+    showGeniusBurst();
+    playApplauseSound(0.72);
+  }
+}
+
+function getAudioContext() {
+  if (!audioContext) {
+    const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+    if (!AudioContextClass) return null;
+    audioContext = new AudioContextClass();
+  }
+
+  if (audioContext.state === "suspended") audioContext.resume();
+  return audioContext;
+}
+
+function playTone({ frequency, start = 0, duration = 0.18, type = "sine", gain = 0.07 }) {
+  const context = getAudioContext();
+  if (!context) return;
+
+  const oscillator = context.createOscillator();
+  const volume = context.createGain();
+  const startsAt = context.currentTime + start;
+
+  oscillator.type = type;
+  oscillator.frequency.setValueAtTime(frequency, startsAt);
+  volume.gain.setValueAtTime(0.0001, startsAt);
+  volume.gain.exponentialRampToValueAtTime(gain, startsAt + 0.015);
+  volume.gain.exponentialRampToValueAtTime(0.0001, startsAt + duration);
+  oscillator.connect(volume);
+  volume.connect(context.destination);
+  oscillator.start(startsAt);
+  oscillator.stop(startsAt + duration + 0.02);
+}
+
+function playNoiseBurst({ start = 0, duration = 0.08, gain = 0.12, filter = 1500 }) {
+  const context = getAudioContext();
+  if (!context) return;
+
+  const sampleCount = Math.floor(context.sampleRate * duration);
+  const buffer = context.createBuffer(1, sampleCount, context.sampleRate);
+  const data = buffer.getChannelData(0);
+
+  for (let index = 0; index < sampleCount; index += 1) {
+    data[index] = (Math.random() * 2 - 1) * (1 - index / sampleCount);
+  }
+
+  const source = context.createBufferSource();
+  const volume = context.createGain();
+  const highpass = context.createBiquadFilter();
+  const startsAt = context.currentTime + start;
+
+  highpass.type = "highpass";
+  highpass.frequency.value = filter;
+  volume.gain.setValueAtTime(gain, startsAt);
+  volume.gain.exponentialRampToValueAtTime(0.0001, startsAt + duration);
+  source.buffer = buffer;
+  source.connect(highpass);
+  highpass.connect(volume);
+  volume.connect(context.destination);
+  source.start(startsAt);
+}
+
+function playApplauseSound(scale = 1) {
+  [0, 0.07, 0.14, 0.23, 0.31, 0.42, 0.54, 0.67].forEach((start, index) => {
+    playNoiseBurst({
+      start,
+      duration: 0.05 + (index % 3) * 0.015,
+      gain: 0.08 * scale,
+      filter: 900 + index * 120,
+    });
+  });
+}
+
+function playFireworkSound() {
+  [
+    { frequency: 520, start: 0, duration: 0.24 },
+    { frequency: 760, start: 0.08, duration: 0.22 },
+    { frequency: 980, start: 0.18, duration: 0.18 },
+  ].forEach((tone) => playTone({ ...tone, type: "triangle", gain: 0.055 }));
+
+  [0.28, 0.44, 0.62].forEach((start, index) => {
+    playNoiseBurst({ start, duration: 0.18, gain: 0.13 - index * 0.02, filter: 520 });
+  });
+}
+
+function clearCelebrationLayer() {
+  els.celebrationLayer.innerHTML = "";
+}
+
+function showGeniusBurst() {
+  clearCelebrationLayer();
+
+  const card = document.createElement("div");
+  card.className = "genius-burst";
+  card.textContent = "You are a genius";
+  els.celebrationLayer.append(card);
+  window.setTimeout(() => card.remove(), 2300);
+}
+
+function showFireworks() {
+  clearCelebrationLayer();
+  showGeniusBurst();
+
+  const colors = ["#b18b4b", "#496f5b", "#465f78", "#a76655", "#78907d", "#d6b66a"];
+  const origins = [
+    [50, 38],
+    [28, 46],
+    [72, 44],
+  ];
+
+  origins.forEach(([x, y], originIndex) => {
+    for (let index = 0; index < 22; index += 1) {
+      const particle = document.createElement("span");
+      const angle = (Math.PI * 2 * index) / 22;
+      const distance = 72 + Math.random() * 70;
+
+      particle.className = "firework-particle";
+      particle.style.left = `${x}%`;
+      particle.style.top = `${y}%`;
+      particle.style.background = colors[(index + originIndex) % colors.length];
+      particle.style.setProperty("--x", `${Math.cos(angle) * distance}px`);
+      particle.style.setProperty("--y", `${Math.sin(angle) * distance}px`);
+      particle.style.animationDelay = `${originIndex * 90 + Math.random() * 70}ms`;
+      els.celebrationLayer.append(particle);
+      window.setTimeout(() => particle.remove(), 1700);
+    }
   });
 }
 
