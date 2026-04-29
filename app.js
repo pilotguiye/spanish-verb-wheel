@@ -445,7 +445,6 @@ const els = {
   personSelected: document.querySelector("#person-selected"),
   wheelButtons: document.querySelectorAll("[data-spin]"),
   spinButton: document.querySelector("#spin-button"),
-  speakButton: document.querySelector("#speak-button"),
   answerForm: document.querySelector("#answer-form"),
   answerInput: document.querySelector("#answer-input"),
   feedback: document.querySelector("#feedback"),
@@ -549,7 +548,7 @@ function spin() {
   spinPart("tense");
   spinPart("person");
 
-  resetAnswer("New prompt ready. Type or speak your answer.");
+  resetAnswer("New prompt ready. Type your answer.");
 }
 
 function spinPart(part) {
@@ -576,13 +575,12 @@ function spinSingle(part) {
     person: "Subject updated.",
   };
 
-  resetAnswer(`${labels[part]} Type or speak the new answer.`);
+  resetAnswer(`${labels[part]} Type the new answer.`);
 }
 
 function resetAnswer(message) {
   setFeedback("neutral", message);
   els.answerInput.value = "";
-  els.answerInput.focus();
 }
 
 function renderPrompt(spinningPart) {
@@ -663,8 +661,9 @@ function normalizeAnswer(answer) {
   return answer
     .trim()
     .toLocaleLowerCase("es")
-    .normalize("NFD")
-    .replace(/\p{Diacritic}/gu, "");
+    .normalize("NFC")
+    .replace(/[.,;:¡!¿?]/g, "")
+    .replace(/\s+/g, " ");
 }
 
 function getVerbForms(lemma) {
@@ -835,39 +834,10 @@ function resetProgress() {
   setFeedback("neutral", "Progress cleared. Start a new round when you are ready.");
 }
 
-function startSpeechAnswer() {
-  const SpeechRecognition =
-    window.SpeechRecognition || window.webkitSpeechRecognition;
-
-  if (!SpeechRecognition) {
-    setFeedback("neutral", "This browser does not support speech input. Try typing instead.");
-    return;
-  }
-
-  const recognition = new SpeechRecognition();
-  recognition.lang = "es-ES";
-  recognition.interimResults = false;
-  recognition.maxAlternatives = 1;
-
-  setFeedback("neutral", "Listening for your Spanish answer...");
-  recognition.start();
-
-  recognition.addEventListener("result", (event) => {
-    const transcript = event.results[0][0].transcript;
-    els.answerInput.value = transcript;
-    checkAnswer(transcript);
-  });
-
-  recognition.addEventListener("error", () => {
-    setFeedback("neutral", "I did not catch that. Try again or type your answer.");
-  });
-}
-
 els.spinButton.addEventListener("click", spin);
 els.wheelButtons.forEach((button) => {
   button.addEventListener("click", () => spinSingle(button.dataset.spin));
 });
-els.speakButton.addEventListener("click", startSpeechAnswer);
 els.resetButton.addEventListener("click", resetProgress);
 els.answerForm.addEventListener("submit", (event) => {
   event.preventDefault();
