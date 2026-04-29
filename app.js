@@ -1,12 +1,14 @@
 const people = [
   { key: "yo", label: "yo", shortLabel: "yo", personIndex: 0 },
   { key: "tu", label: "tú", shortLabel: "tú", personIndex: 1 },
+  { key: "usted", label: "usted", shortLabel: "usted", personIndex: 2 },
   { key: "andres", label: "Andrés", shortLabel: "Andrés", personIndex: 2 },
   { key: "el", label: "él / ella / usted", shortLabel: "él", personIndex: 2 },
   { key: "pepe-yo", label: "Pepe y yo", shortLabel: "Pepe y yo", personIndex: 3 },
   { key: "nosotros", label: "nosotros/as", shortLabel: "nos.", personIndex: 3 },
   { key: "paco-tu", label: "Paco y tú", shortLabel: "Paco y tú", personIndex: 4 },
   { key: "vosotros", label: "vosotros/as", shortLabel: "vos.", personIndex: 4 },
+  { key: "ustedes", label: "ustedes", shortLabel: "ustedes", personIndex: 5 },
   { key: "ana-ema", label: "Ana y Ema", shortLabel: "Ana y Ema", personIndex: 5 },
   { key: "ellos", label: "ellos/as / ustedes", shortLabel: "ellos", personIndex: 5 },
 ];
@@ -80,9 +82,10 @@ const tenses = [
     compound: "imperfectSubjunctive",
   },
   {
-    key: "subjFuture",
-    label: "Subjuntivo · Futuro simple",
-    shortLabel: "Subj. fut.",
+    key: "imperativeAffirmative",
+    label: "Imperativo · Afirmativo",
+    shortLabel: "Imper. aff.",
+    allowedPersonKeys: ["tu", "usted", "nosotros", "vosotros", "ustedes"],
   },
 ];
 
@@ -130,6 +133,7 @@ const verbs = {
     subjPresent: ["sea", "seas", "sea", "seamos", "seáis", "sean"],
     subjImperfect: ["fuera", "fueras", "fuera", "fuéramos", "fuerais", "fueran"],
     subjFuture: ["fuere", "fueres", "fuere", "fuéremos", "fuereis", "fueren"],
+    imperativeAffirmative: ["", "sé", "sea", "seamos", "sed", "sean"],
   },
   estar: {
     participle: "estado",
@@ -152,6 +156,7 @@ const verbs = {
     subjPresent: ["tenga", "tengas", "tenga", "tengamos", "tengáis", "tengan"],
     subjImperfect: ["tuviera", "tuvieras", "tuviera", "tuviéramos", "tuvierais", "tuvieran"],
     subjFuture: ["tuviere", "tuvieres", "tuviere", "tuviéremos", "tuviereis", "tuvieren"],
+    imperativeAffirmative: ["", "ten", "tenga", "tengamos", "tened", "tengan"],
   },
   hacer: {
     participle: "hecho",
@@ -163,6 +168,7 @@ const verbs = {
     subjPresent: ["haga", "hagas", "haga", "hagamos", "hagáis", "hagan"],
     subjImperfect: ["hiciera", "hicieras", "hiciera", "hiciéramos", "hicierais", "hicieran"],
     subjFuture: ["hiciere", "hicieres", "hiciere", "hiciéremos", "hiciereis", "hicieren"],
+    imperativeAffirmative: ["", "haz", "haga", "hagamos", "haced", "hagan"],
   },
   ir: {
     participle: "ido",
@@ -174,6 +180,7 @@ const verbs = {
     subjPresent: ["vaya", "vayas", "vaya", "vayamos", "vayáis", "vayan"],
     subjImperfect: ["fuera", "fueras", "fuera", "fuéramos", "fuerais", "fueran"],
     subjFuture: ["fuere", "fueres", "fuere", "fuéremos", "fuereis", "fueren"],
+    imperativeAffirmative: ["", "ve", "vaya", "vayamos", "id", "vayan"],
   },
 };
 
@@ -184,6 +191,13 @@ const haber = {
   conditionalIndicative: ["habría", "habrías", "habría", "habríamos", "habríais", "habrían"],
   presentSubjunctive: ["haya", "hayas", "haya", "hayamos", "hayáis", "hayan"],
   imperfectSubjunctive: ["hubiera", "hubieras", "hubiera", "hubiéramos", "hubierais", "hubieran"],
+};
+
+const imperativeOverrides = {
+  decir: ["", "di", "diga", "digamos", "decid", "digan"],
+  poner: ["", "pon", "ponga", "pongamos", "poned", "pongan"],
+  salir: ["", "sal", "salga", "salgamos", "salid", "salgan"],
+  venir: ["", "ven", "venga", "vengamos", "venid", "vengan"],
 };
 
 const vocabularySource = `
@@ -431,6 +445,11 @@ const STORAGE_KEY = "rueda-de-verbos-state";
 const verbEntries = buildVerbEntries(vocabularySource);
 
 const state = loadState();
+const savedTenseKeys =
+  state.selectedTenseKeys?.filter((key) => tenses.some((tense) => tense.key === key)) || [];
+const selectedTenseKeys = new Set(
+  savedTenseKeys.length > 0 ? savedTenseKeys : tenses.map((tense) => tense.key),
+);
 let current = {
   verbIndex: verbEntries.findIndex((entry) => entry.lemma === "hablar"),
   tense: "present",
@@ -454,6 +473,9 @@ const els = {
   mistakeList: document.querySelector("#mistake-list"),
   emptyState: document.querySelector("#empty-state"),
   resetButton: document.querySelector("#reset-button"),
+  tenseFilterGroups: document.querySelector("#tense-filter-groups"),
+  selectAllTensesButton: document.querySelector("#select-all-tenses"),
+  clearAllTensesButton: document.querySelector("#clear-all-tenses"),
 };
 
 const rollTimers = {
@@ -466,18 +488,39 @@ function loadState() {
   const fallback = { correct: 0, wrong: 0, streak: 0, mistakes: [] };
 
   try {
-    return JSON.parse(localStorage.getItem(STORAGE_KEY)) || fallback;
+    return { ...fallback, ...(JSON.parse(localStorage.getItem(STORAGE_KEY)) || {}) };
   } catch {
     return fallback;
   }
 }
 
 function saveState() {
+  state.selectedTenseKeys = Array.from(selectedTenseKeys);
   localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
 }
 
 function randomItem(items) {
   return items[Math.floor(Math.random() * items.length)];
+}
+
+function activeTenses() {
+  return tenses.filter((tense) => selectedTenseKeys.has(tense.key));
+}
+
+function fallbackTenseKey(excludedKeys = []) {
+  const excluded = new Set(excludedKeys);
+  return tenses.find((tense) => !excluded.has(tense.key))?.key || tenses[0].key;
+}
+
+function currentTense() {
+  return tenses.find((tense) => tense.key === current.tense);
+}
+
+function validPeopleForCurrentTense() {
+  const allowed = currentTense()?.allowedPersonKeys;
+  return allowed
+    ? people.filter((person) => allowed.includes(person.key))
+    : people;
 }
 
 function buildVerbEntries(source) {
@@ -557,11 +600,14 @@ function spinPart(part) {
   }
 
   if (part === "tense") {
-    current.tense = randomItem(tenses).key;
+    current.tense = randomItem(activeTenses()).key;
+    ensureValidPersonForTense();
   }
 
   if (part === "person") {
-    current.personIndex = Math.floor(Math.random() * people.length);
+    const validPeople = validPeopleForCurrentTense();
+    const selectedPerson = randomItem(validPeople);
+    current.personIndex = people.findIndex((person) => person.key === selectedPerson.key);
   }
 
   renderPrompt(part);
@@ -620,6 +666,140 @@ function renderVerbMeter(spin) {
   });
 }
 
+function renderTenseFilters() {
+  els.tenseFilterGroups.innerHTML = "";
+
+  [
+    ["Indicative", tenses.filter((tense) => tense.label.startsWith("Indicativo"))],
+    ["Subjunctive", tenses.filter((tense) => tense.label.startsWith("Subjuntivo"))],
+    ["Imperative", tenses.filter((tense) => tense.label.startsWith("Imperativo"))],
+  ].forEach(([groupName, groupTenses]) => {
+    const group = document.createElement("section");
+    const groupHeader = document.createElement("div");
+    const title = document.createElement("h3");
+    const controls = document.createElement("div");
+    const selectButton = document.createElement("button");
+    const clearButton = document.createElement("button");
+    const options = document.createElement("div");
+
+    group.className = "tense-filter-group";
+    groupHeader.className = "tense-filter-group-header";
+    title.textContent = groupName;
+    controls.className = "tense-filter-group-controls";
+    if (groupTenses.length > 1) {
+      selectButton.type = "button";
+      clearButton.type = "button";
+      selectButton.textContent = "Select all";
+      clearButton.textContent = "Clear";
+      selectButton.addEventListener("click", () => selectTenseGroup(groupTenses));
+      clearButton.addEventListener("click", () => clearTenseGroup(groupTenses));
+      controls.append(selectButton, clearButton);
+    }
+    options.className = "tense-filter-options";
+
+    groupTenses.forEach((tense) => {
+      const label = document.createElement("label");
+      const input = document.createElement("input");
+      const span = document.createElement("span");
+
+      label.className = "tense-chip";
+      input.type = "checkbox";
+      input.value = tense.key;
+      input.checked = selectedTenseKeys.has(tense.key);
+      span.textContent = tense.label.replace(/^Indicativo · |^Subjuntivo · /, "");
+
+      input.addEventListener("change", () => {
+        updateTenseSelection(tense.key, input.checked);
+      });
+
+      label.append(input, span);
+      options.append(label);
+    });
+
+    groupHeader.append(title);
+    if (controls.childElementCount > 0) groupHeader.append(controls);
+    group.append(groupHeader, options);
+    els.tenseFilterGroups.append(group);
+  });
+
+  updateTenseFocusButton();
+}
+
+function updateTenseSelection(key, shouldSelect) {
+  if (shouldSelect) {
+    selectedTenseKeys.add(key);
+  } else {
+    selectedTenseKeys.delete(key);
+    if (selectedTenseKeys.size === 0) selectedTenseKeys.add(fallbackTenseKey([key]));
+  }
+
+  if (!selectedTenseKeys.has(current.tense)) {
+    current.tense = randomItem(activeTenses()).key;
+    ensureValidPersonForTense();
+    renderPrompt("tense");
+  }
+
+  saveState();
+  renderTenseFilters();
+}
+
+function selectAllTenses() {
+  tenses.forEach((tense) => selectedTenseKeys.add(tense.key));
+  saveState();
+  renderTenseFilters();
+  setFeedback("neutral", "All tenses are back in rotation.");
+}
+
+function clearAllTenses() {
+  selectedTenseKeys.clear();
+  selectedTenseKeys.add(current.tense);
+  saveState();
+  renderTenseFilters();
+  setFeedback("neutral", "All other tenses cleared. Keep at least one tense active.");
+}
+
+function selectTenseGroup(groupTenses) {
+  groupTenses.forEach((tense) => selectedTenseKeys.add(tense.key));
+  saveState();
+  renderTenseFilters();
+}
+
+function clearTenseGroup(groupTenses) {
+  const groupKeys = groupTenses.map((tense) => tense.key);
+  groupKeys.forEach((key) => selectedTenseKeys.delete(key));
+  if (selectedTenseKeys.size === 0) selectedTenseKeys.add(fallbackTenseKey(groupKeys));
+
+  if (!selectedTenseKeys.has(current.tense)) {
+    current.tense = randomItem(activeTenses()).key;
+    ensureValidPersonForTense();
+    renderPrompt("tense");
+  }
+
+  saveState();
+  renderTenseFilters();
+}
+
+function updateTenseFocusButton() {
+  els.selectAllTensesButton.disabled = selectedTenseKeys.size === tenses.length;
+  els.clearAllTensesButton.disabled = selectedTenseKeys.size === 1;
+  els.selectAllTensesButton.textContent =
+    selectedTenseKeys.size === tenses.length
+      ? "All Tenses Active"
+      : "Practice All Tenses";
+  els.clearAllTensesButton.textContent =
+    selectedTenseKeys.size === 1 ? "One Tense Active" : "Clear All Tenses";
+}
+
+function ensureValidPersonForTense() {
+  const validPeople = validPeopleForCurrentTense();
+  const currentPerson = people[current.personIndex];
+
+  if (!validPeople.some((person) => person.key === currentPerson.key)) {
+    const selectedPerson = randomItem(validPeople);
+    current.personIndex = people.findIndex((person) => person.key === selectedPerson.key);
+  }
+}
+
 function renderMeter({ part, items, activeIndex, spin, element, getText }) {
   const finalText = getText(items[activeIndex]);
 
@@ -669,10 +849,13 @@ function normalizeAnswer(answer) {
 function getVerbForms(lemma) {
   const regular = buildRegularForms(lemma);
   const override = verbs[lemma];
+  const imperativeAffirmative =
+    override?.imperativeAffirmative || imperativeOverrides[lemma] || regular.imperativeAffirmative;
 
   return {
     ...regular,
     ...override,
+    imperativeAffirmative,
     participle: override?.participle || regular.participle,
   };
 }
@@ -729,6 +912,14 @@ function buildRegularForms(lemma) {
     subjPresent: endings.subjPresent[ending].map((item) => `${stem}${item}`),
     subjImperfect: endings.subjImperfect[ending].map((item) => `${stem}${item}`),
     subjFuture: endings.subjFuture[ending].map((item) => `${stem}${item}`),
+    imperativeAffirmative: [
+      "",
+      `${stem}${ending === "ar" ? "a" : "e"}`,
+      `${stem}${ending === "ar" ? "e" : "a"}`,
+      `${stem}${ending === "ar" ? "emos" : "amos"}`,
+      `${infinitive.slice(0, -1)}d`,
+      `${stem}${ending === "ar" ? "en" : "an"}`,
+    ],
   };
 }
 
@@ -838,6 +1029,8 @@ els.spinButton.addEventListener("click", spin);
 els.wheelButtons.forEach((button) => {
   button.addEventListener("click", () => spinSingle(button.dataset.spin));
 });
+els.selectAllTensesButton.addEventListener("click", selectAllTenses);
+els.clearAllTensesButton.addEventListener("click", clearAllTenses);
 els.resetButton.addEventListener("click", resetProgress);
 els.answerForm.addEventListener("submit", (event) => {
   event.preventDefault();
@@ -845,5 +1038,6 @@ els.answerForm.addEventListener("submit", (event) => {
 });
 
 renderPrompt();
+renderTenseFilters();
 renderStats();
 renderMistakes();
