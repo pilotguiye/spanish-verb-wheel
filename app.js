@@ -490,6 +490,10 @@ const els = {
   mistakeList: document.querySelector("#mistake-list"),
   emptyState: document.querySelector("#empty-state"),
   resetButton: document.querySelector("#reset-button"),
+  wheelGrid: document.querySelector(".wheel-grid"),
+  tenseFocus: document.querySelector(".tense-focus"),
+  tenseFocusToggle: document.querySelector("#tense-focus-toggle"),
+  tenseFocusBody: document.querySelector("#tense-focus-body"),
   tenseFilterGroups: document.querySelector("#tense-filter-groups"),
   selectAllTensesButton: document.querySelector("#select-all-tenses"),
   clearAllTensesButton: document.querySelector("#clear-all-tenses"),
@@ -502,6 +506,7 @@ const rollTimers = {
   person: [],
 };
 let audioContext;
+const mobileLayout = window.matchMedia("(max-width: 720px)");
 
 function loadState() {
   const fallback = { correct: 0, wrong: 0, streak: 0, mistakes: [] };
@@ -611,6 +616,7 @@ function spin() {
   spinPart("person");
 
   resetAnswer("New prompt ready. Type your answer.");
+  collapseTenseFocusForMobile(true);
 }
 
 function spinPart(part) {
@@ -641,11 +647,34 @@ function spinSingle(part) {
   };
 
   resetAnswer(`${labels[part]} Type the new answer.`);
+  collapseTenseFocusForMobile(true);
 }
 
 function resetAnswer(message) {
   setFeedback("neutral", message);
   els.answerInput.value = "";
+}
+
+function setTenseFocusExpanded(isExpanded) {
+  els.tenseFocus.classList.toggle("is-collapsed", !isExpanded);
+  els.tenseFocusToggle.setAttribute("aria-expanded", String(isExpanded));
+  els.tenseFocusBody.hidden = false;
+}
+
+function toggleTenseFocus() {
+  setTenseFocusExpanded(els.tenseFocus.classList.contains("is-collapsed"));
+}
+
+function collapseTenseFocusForMobile(showPrompt = false) {
+  if (!mobileLayout.matches) return;
+
+  setTenseFocusExpanded(false);
+
+  if (showPrompt) {
+    window.setTimeout(() => {
+      els.wheelGrid.scrollIntoView({ behavior: "smooth", block: "start" });
+    }, 80);
+  }
 }
 
 function renderPrompt(spinningPart) {
@@ -890,16 +919,468 @@ function normalizeAnswer(answer) {
 
 function getVerbForms(lemma) {
   const regular = buildRegularForms(lemma);
+  const pattern = buildPatternForms(lemma, regular);
   const override = verbs[lemma];
   const imperativeAffirmative =
-    override?.imperativeAffirmative || imperativeOverrides[lemma] || regular.imperativeAffirmative;
+    override?.imperativeAffirmative ||
+    pattern?.imperativeAffirmative ||
+    imperativeOverrides[lemma] ||
+    regular.imperativeAffirmative;
 
   return {
     ...regular,
+    ...pattern,
     ...override,
     imperativeAffirmative,
-    participle: override?.participle || regular.participle,
+    participle: override?.participle || pattern?.participle || regular.participle,
   };
+}
+
+function withEndings(stem, endings) {
+  return endings.map((ending) => `${stem}${ending}`);
+}
+
+function replaceLast(source, search, replacement) {
+  const index = source.lastIndexOf(search);
+  if (index === -1) return source;
+  return `${source.slice(0, index)}${replacement}${source.slice(index + search.length)}`;
+}
+
+function preteriteThirdPersonStem(stem) {
+  return [`${stem}e`, `${stem}iste`, `${stem}o`, `${stem}imos`, `${stem}isteis`, `${stem}ieron`];
+}
+
+function stemBeforeEEnding(lemma, stem) {
+  if (lemma.endsWith("gar")) return `${stem}u`;
+  if (lemma.endsWith("car")) return `${stem.slice(0, -1)}qu`;
+  if (lemma.endsWith("zar")) return `${stem.slice(0, -1)}c`;
+  if (lemma.endsWith("cer") && lemma !== "hacer") return `${stem.slice(0, -1)}zc`;
+  if ((lemma.endsWith("ger") || lemma.endsWith("gir")) && lemma !== "elegir") {
+    return `${stem.slice(0, -1)}j`;
+  }
+  return stem;
+}
+
+function buildCoreForms({
+  lemma,
+  participle,
+  present,
+  preterite,
+  imperfect,
+  futureStem,
+  subjPresent,
+  subjImperfect,
+  imperativeAffirmative,
+}) {
+  return {
+    participle,
+    present,
+    preterite,
+    imperfect: imperfect || buildRegularForms(lemma).imperfect,
+    future: withEndings(futureStem || lemma, ["é", "ás", "á", "emos", "éis", "án"]),
+    conditional: withEndings(futureStem || lemma, ["ía", "ías", "ía", "íamos", "íais", "ían"]),
+    subjPresent,
+    subjImperfect,
+    imperativeAffirmative,
+  };
+}
+
+function buildPonerFamilyForms(lemma) {
+  const prefix = lemma.slice(0, -5);
+  const regular = buildRegularForms(lemma);
+
+  return buildCoreForms({
+    lemma,
+    participle: `${prefix}puesto`,
+    present: [
+      `${prefix}pongo`,
+      `${prefix}pones`,
+      `${prefix}pone`,
+      `${prefix}ponemos`,
+      `${prefix}ponéis`,
+      `${prefix}ponen`,
+    ],
+    preterite: [
+      `${prefix}puse`,
+      `${prefix}pusiste`,
+      `${prefix}puso`,
+      `${prefix}pusimos`,
+      `${prefix}pusisteis`,
+      `${prefix}pusieron`,
+    ],
+    futureStem: `${prefix}pondr`,
+    subjPresent: withEndings(`${prefix}pong`, ["a", "as", "a", "amos", "áis", "an"]),
+    subjImperfect: withEndings(`${prefix}pus`, ["iera", "ieras", "iera", "iéramos", "ierais", "ieran"]),
+    imperativeAffirmative: [
+      "",
+      prefix ? `${prefix}pón` : "pon",
+      `${prefix}ponga`,
+      `${prefix}pongamos`,
+      regular.imperativeAffirmative[4],
+      `${prefix}pongan`,
+    ],
+  });
+}
+
+function buildTenerFamilyForms(lemma) {
+  const prefix = lemma.slice(0, -5);
+  const regular = buildRegularForms(lemma);
+
+  return buildCoreForms({
+    lemma,
+    participle: `${prefix}tenido`,
+    present: [
+      `${prefix}tengo`,
+      `${prefix}tienes`,
+      `${prefix}tiene`,
+      `${prefix}tenemos`,
+      `${prefix}tenéis`,
+      `${prefix}tienen`,
+    ],
+    preterite: [
+      `${prefix}tuve`,
+      `${prefix}tuviste`,
+      `${prefix}tuvo`,
+      `${prefix}tuvimos`,
+      `${prefix}tuvisteis`,
+      `${prefix}tuvieron`,
+    ],
+    futureStem: `${prefix}tendr`,
+    subjPresent: withEndings(`${prefix}teng`, ["a", "as", "a", "amos", "áis", "an"]),
+    subjImperfect: withEndings(`${prefix}tuv`, ["iera", "ieras", "iera", "iéramos", "ierais", "ieran"]),
+    imperativeAffirmative: [
+      "",
+      prefix ? `${prefix}tén` : "ten",
+      `${prefix}tenga`,
+      `${prefix}tengamos`,
+      regular.imperativeAffirmative[4],
+      `${prefix}tengan`,
+    ],
+  });
+}
+
+function buildSpellingChangeForms(lemma, regular) {
+  const ending = lemma.slice(-2);
+  const stem = lemma.slice(0, -2);
+  const subjEndings = ending === "ar" ? ["e", "es", "e", "emos", "éis", "en"] : ["a", "as", "a", "amos", "áis", "an"];
+  const subjStem = stemBeforeEEnding(lemma, stem);
+  const changes = {};
+  let yo = "";
+
+  if (subjStem !== stem) {
+    const subjPresent = withEndings(subjStem, subjEndings);
+    changes.subjPresent = subjPresent;
+    changes.imperativeAffirmative = [
+      "",
+      regular.imperativeAffirmative[1],
+      subjPresent[2],
+      subjPresent[3],
+      regular.imperativeAffirmative[4],
+      subjPresent[5],
+    ];
+  }
+
+  if (lemma.endsWith("cer") && lemma !== "hacer") yo = `${subjStem}o`;
+  if ((lemma.endsWith("ger") || lemma.endsWith("gir")) && lemma !== "elegir") yo = `${subjStem}o`;
+  if (yo) changes.present = [yo, ...regular.present.slice(1)];
+
+  if (lemma.endsWith("gar")) changes.preterite = [`${stem}ué`, ...regular.preterite.slice(1)];
+  if (lemma.endsWith("car")) changes.preterite = [`${stem.slice(0, -1)}qué`, ...regular.preterite.slice(1)];
+  if (lemma.endsWith("zar")) changes.preterite = [`${stem.slice(0, -1)}cé`, ...regular.preterite.slice(1)];
+
+  return changes;
+}
+
+function buildArErStemChangeForms(lemma, regular, from, to) {
+  const ending = lemma.slice(-2);
+  const stem = lemma.slice(0, -2);
+  const changedStem = replaceLast(stem, from, to);
+  const presentEndings =
+    ending === "ar" ? ["o", "as", "a", "amos", "áis", "an"] : ["o", "es", "e", "emos", "éis", "en"];
+  const subjEndings =
+    ending === "ar" ? ["e", "es", "e", "emos", "éis", "en"] : ["a", "as", "a", "amos", "áis", "an"];
+  const subjChangedStem = stemBeforeEEnding(lemma, changedStem);
+  const subjBaseStem = stemBeforeEEnding(lemma, stem);
+  const present = [
+    `${changedStem}${presentEndings[0]}`,
+    `${changedStem}${presentEndings[1]}`,
+    `${changedStem}${presentEndings[2]}`,
+    `${stem}${presentEndings[3]}`,
+    `${stem}${presentEndings[4]}`,
+    `${changedStem}${presentEndings[5]}`,
+  ];
+  const subjPresent = [
+    `${subjChangedStem}${subjEndings[0]}`,
+    `${subjChangedStem}${subjEndings[1]}`,
+    `${subjChangedStem}${subjEndings[2]}`,
+    `${subjBaseStem}${subjEndings[3]}`,
+    `${subjBaseStem}${subjEndings[4]}`,
+    `${subjChangedStem}${subjEndings[5]}`,
+  ];
+
+  return {
+    ...buildSpellingChangeForms(lemma, regular),
+    present,
+    subjPresent,
+    imperativeAffirmative: ["", present[2], subjPresent[2], subjPresent[3], regular.imperativeAffirmative[4], subjPresent[5]],
+  };
+}
+
+function buildIRStemChangeForms(lemma, regular, type) {
+  const stem = lemma.slice(0, -2);
+  const iStem = replaceLast(stem, "e", "i");
+  const ieStem = replaceLast(stem, "e", "ie");
+  const presentStem = type === "e-i" ? iStem : ieStem;
+  const subjOuterStem = type === "e-i" ? iStem : ieStem;
+  const subjInnerStem = type === "e-i" ? iStem : iStem;
+
+  const present = [
+    `${presentStem}o`,
+    `${presentStem}es`,
+    `${presentStem}e`,
+    `${stem}imos`,
+    `${stem}ís`,
+    `${presentStem}en`,
+  ];
+  const subjPresent = [
+    `${subjOuterStem}a`,
+    `${subjOuterStem}as`,
+    `${subjOuterStem}a`,
+    `${subjInnerStem}amos`,
+    `${subjInnerStem}áis`,
+    `${subjOuterStem}an`,
+  ];
+  const preterite = [
+    regular.preterite[0],
+    regular.preterite[1],
+    `${iStem}ió`,
+    regular.preterite[3],
+    regular.preterite[4],
+    `${iStem}ieron`,
+  ];
+
+  return {
+    present,
+    preterite,
+    subjPresent,
+    subjImperfect: withEndings(iStem, ["iera", "ieras", "iera", "iéramos", "ierais", "ieran"]),
+    imperativeAffirmative: ["", present[2], subjPresent[2], subjPresent[3], regular.imperativeAffirmative[4], subjPresent[5]],
+  };
+}
+
+function buildPatternForms(lemma, regular) {
+  if (lemma.endsWith("poner")) return buildPonerFamilyForms(lemma);
+  if (lemma.endsWith("tener")) return buildTenerFamilyForms(lemma);
+  if (lemma.endsWith("ducir")) {
+    const stem = lemma.slice(0, -3);
+    return {
+      present: [`${stem}zco`, ...regular.present.slice(1)],
+      preterite: preteriteThirdPersonStem(`${stem}j`),
+      subjPresent: withEndings(`${stem}zc`, ["a", "as", "a", "amos", "áis", "an"]),
+      subjImperfect: withEndings(`${stem}j`, ["era", "eras", "era", "éramos", "erais", "eran"]),
+      imperativeAffirmative: ["", regular.imperativeAffirmative[1], `${stem}zca`, `${stem}zcamos`, regular.imperativeAffirmative[4], `${stem}zcan`],
+    };
+  }
+
+  const fixedForms = {
+    querer: buildCoreForms({
+      lemma,
+      participle: "querido",
+      present: ["quiero", "quieres", "quiere", "queremos", "queréis", "quieren"],
+      preterite: preteriteThirdPersonStem("quis"),
+      futureStem: "querr",
+      subjPresent: ["quiera", "quieras", "quiera", "queramos", "queráis", "quieran"],
+      subjImperfect: withEndings("quis", ["iera", "ieras", "iera", "iéramos", "ierais", "ieran"]),
+      imperativeAffirmative: ["", "quiere", "quiera", "queramos", "quered", "quieran"],
+    }),
+    poder: buildCoreForms({
+      lemma,
+      participle: "podido",
+      present: ["puedo", "puedes", "puede", "podemos", "podéis", "pueden"],
+      preterite: preteriteThirdPersonStem("pud"),
+      futureStem: "podr",
+      subjPresent: ["pueda", "puedas", "pueda", "podamos", "podáis", "puedan"],
+      subjImperfect: withEndings("pud", ["iera", "ieras", "iera", "iéramos", "ierais", "ieran"]),
+      imperativeAffirmative: ["", "puede", "pueda", "podamos", "poded", "puedan"],
+    }),
+    jugar: {
+      present: ["juego", "juegas", "juega", "jugamos", "jugáis", "juegan"],
+      preterite: ["jugué", "jugaste", "jugó", "jugamos", "jugasteis", "jugaron"],
+      subjPresent: ["juegue", "juegues", "juegue", "juguemos", "juguéis", "jueguen"],
+      imperativeAffirmative: ["", "juega", "juegue", "juguemos", "jugad", "jueguen"],
+    },
+    pedir: buildIRStemChangeForms(lemma, regular, "e-i"),
+    servir: buildIRStemChangeForms(lemma, regular, "e-i"),
+    repetir: buildIRStemChangeForms(lemma, regular, "e-i"),
+    despedir: buildIRStemChangeForms(lemma, regular, "e-i"),
+    sentir: buildIRStemChangeForms(lemma, regular, "e-ie"),
+    divertir: buildIRStemChangeForms(lemma, regular, "e-ie"),
+    adquirir: {
+      present: ["adquiero", "adquieres", "adquiere", "adquirimos", "adquirís", "adquieren"],
+      subjPresent: ["adquiera", "adquieras", "adquiera", "adquiramos", "adquiráis", "adquieran"],
+      imperativeAffirmative: ["", "adquiere", "adquiera", "adquiramos", "adquirid", "adquieran"],
+    },
+    seguir: {
+      present: ["sigo", "sigues", "sigue", "seguimos", "seguís", "siguen"],
+      preterite: ["seguí", "seguiste", "siguió", "seguimos", "seguisteis", "siguieron"],
+      subjPresent: ["siga", "sigas", "siga", "sigamos", "sigáis", "sigan"],
+      subjImperfect: withEndings("sigu", ["iera", "ieras", "iera", "iéramos", "ierais", "ieran"]),
+      imperativeAffirmative: ["", "sigue", "siga", "sigamos", "seguid", "sigan"],
+    },
+    elegir: {
+      present: ["elijo", "eliges", "elige", "elegimos", "elegís", "eligen"],
+      preterite: ["elegí", "elegiste", "eligió", "elegimos", "elegisteis", "eligieron"],
+      subjPresent: ["elija", "elijas", "elija", "elijamos", "elijáis", "elijan"],
+      subjImperfect: withEndings("elig", ["iera", "ieras", "iera", "iéramos", "ierais", "ieran"]),
+      imperativeAffirmative: ["", "elige", "elija", "elijamos", "elegid", "elijan"],
+    },
+    leer: {
+      preterite: ["leí", "leíste", "leyó", "leímos", "leísteis", "leyeron"],
+      subjPresent: ["lea", "leas", "lea", "leamos", "leáis", "lean"],
+      subjImperfect: withEndings("ley", ["era", "eras", "era", "éramos", "erais", "eran"]),
+      imperativeAffirmative: ["", "lee", "lea", "leamos", "leed", "lean"],
+    },
+    creer: {
+      preterite: ["creí", "creíste", "creyó", "creímos", "creísteis", "creyeron"],
+      subjPresent: ["crea", "creas", "crea", "creamos", "creáis", "crean"],
+      subjImperfect: withEndings("crey", ["era", "eras", "era", "éramos", "erais", "eran"]),
+      imperativeAffirmative: ["", "cree", "crea", "creamos", "creed", "crean"],
+    },
+    incluir: {
+      present: ["incluyo", "incluyes", "incluye", "incluimos", "incluís", "incluyen"],
+      preterite: ["incluí", "incluiste", "incluyó", "incluimos", "incluisteis", "incluyeron"],
+      subjPresent: ["incluya", "incluyas", "incluya", "incluyamos", "incluyáis", "incluyan"],
+      subjImperfect: withEndings("incluy", ["era", "eras", "era", "éramos", "erais", "eran"]),
+      imperativeAffirmative: ["", "incluye", "incluya", "incluyamos", "incluid", "incluyan"],
+    },
+    abrir: { participle: "abierto" },
+    escribir: { participle: "escrito" },
+    romper: { participle: "roto" },
+    volver: {
+      participle: "vuelto",
+      ...buildArErStemChangeForms(lemma, regular, "o", "ue"),
+    },
+    devolver: {
+      participle: "devuelto",
+      ...buildArErStemChangeForms(lemma, regular, "o", "ue"),
+    },
+    venir: buildCoreForms({
+      lemma,
+      participle: "venido",
+      present: ["vengo", "vienes", "viene", "venimos", "venís", "vienen"],
+      preterite: ["vine", "viniste", "vino", "vinimos", "vinisteis", "vinieron"],
+      futureStem: "vendr",
+      subjPresent: withEndings("veng", ["a", "as", "a", "amos", "áis", "an"]),
+      subjImperfect: withEndings("vin", ["iera", "ieras", "iera", "iéramos", "ierais", "ieran"]),
+      imperativeAffirmative: ["", "ven", "venga", "vengamos", "venid", "vengan"],
+    }),
+    decir: buildCoreForms({
+      lemma,
+      participle: "dicho",
+      present: ["digo", "dices", "dice", "decimos", "decís", "dicen"],
+      preterite: ["dije", "dijiste", "dijo", "dijimos", "dijisteis", "dijeron"],
+      futureStem: "dir",
+      subjPresent: withEndings("dig", ["a", "as", "a", "amos", "áis", "an"]),
+      subjImperfect: withEndings("dij", ["era", "eras", "era", "éramos", "erais", "eran"]),
+      imperativeAffirmative: ["", "di", "diga", "digamos", "decid", "digan"],
+    }),
+    salir: {
+      present: ["salgo", "sales", "sale", "salimos", "salís", "salen"],
+      future: withEndings("saldr", ["é", "ás", "á", "emos", "éis", "án"]),
+      conditional: withEndings("saldr", ["ía", "ías", "ía", "íamos", "íais", "ían"]),
+      subjPresent: withEndings("salg", ["a", "as", "a", "amos", "áis", "an"]),
+      imperativeAffirmative: ["", "sal", "salga", "salgamos", "salid", "salgan"],
+    },
+    saber: buildCoreForms({
+      lemma,
+      participle: "sabido",
+      present: ["sé", "sabes", "sabe", "sabemos", "sabéis", "saben"],
+      preterite: ["supe", "supiste", "supo", "supimos", "supisteis", "supieron"],
+      futureStem: "sabr",
+      subjPresent: withEndings("sep", ["a", "as", "a", "amos", "áis", "an"]),
+      subjImperfect: withEndings("sup", ["iera", "ieras", "iera", "iéramos", "ierais", "ieran"]),
+      imperativeAffirmative: ["", "sabe", "sepa", "sepamos", "sabed", "sepan"],
+    }),
+    ver: buildCoreForms({
+      lemma,
+      participle: "visto",
+      present: ["veo", "ves", "ve", "vemos", "veis", "ven"],
+      preterite: ["vi", "viste", "vio", "vimos", "visteis", "vieron"],
+      imperfect: ["veía", "veías", "veía", "veíamos", "veíais", "veían"],
+      subjPresent: withEndings("ve", ["a", "as", "a", "amos", "áis", "an"]),
+      subjImperfect: withEndings("vi", ["era", "eras", "era", "éramos", "erais", "eran"]),
+      imperativeAffirmative: ["", "ve", "vea", "veamos", "ved", "vean"],
+    }),
+    dar: buildCoreForms({
+      lemma,
+      participle: "dado",
+      present: ["doy", "das", "da", "damos", "dais", "dan"],
+      preterite: ["di", "diste", "dio", "dimos", "disteis", "dieron"],
+      subjPresent: ["dé", "des", "dé", "demos", "deis", "den"],
+      subjImperfect: withEndings("di", ["era", "eras", "era", "éramos", "erais", "eran"]),
+      imperativeAffirmative: ["", "da", "dé", "demos", "dad", "den"],
+    }),
+    traer: buildCoreForms({
+      lemma,
+      participle: "traído",
+      present: ["traigo", "traes", "trae", "traemos", "traéis", "traen"],
+      preterite: ["traje", "trajiste", "trajo", "trajimos", "trajisteis", "trajeron"],
+      subjPresent: withEndings("traig", ["a", "as", "a", "amos", "áis", "an"]),
+      subjImperfect: withEndings("traj", ["era", "eras", "era", "éramos", "erais", "eran"]),
+      imperativeAffirmative: ["", "trae", "traiga", "traigamos", "traed", "traigan"],
+    }),
+    oír: buildCoreForms({
+      lemma,
+      participle: "oído",
+      present: ["oigo", "oyes", "oye", "oímos", "oís", "oyen"],
+      preterite: ["oí", "oíste", "oyó", "oímos", "oísteis", "oyeron"],
+      imperfect: ["oía", "oías", "oía", "oíamos", "oíais", "oían"],
+      futureStem: "oir",
+      subjPresent: withEndings("oig", ["a", "as", "a", "amos", "áis", "an"]),
+      subjImperfect: withEndings("oy", ["era", "eras", "era", "éramos", "erais", "eran"]),
+      imperativeAffirmative: ["", "oye", "oiga", "oigamos", "oíd", "oigan"],
+    }),
+    haber: buildCoreForms({
+      lemma,
+      participle: "habido",
+      present: haber.presentIndicative,
+      preterite: ["hube", "hubiste", "hubo", "hubimos", "hubisteis", "hubieron"],
+      imperfect: haber.imperfectIndicative,
+      futureStem: "habr",
+      subjPresent: haber.presentSubjunctive,
+      subjImperfect: haber.imperfectSubjunctive,
+      imperativeAffirmative: ["", "he", "haya", "hayamos", "habed", "hayan"],
+    }),
+  };
+
+  const eToIEVerbs = new Set([
+    "acertar",
+    "atravesar",
+    "cerrar",
+    "comenzar",
+    "empezar",
+    "entender",
+    "fregar",
+    "pensar",
+    "recomendar",
+    "sentar",
+  ]);
+  const oToUEVerbs = new Set([
+    "acostar",
+    "almorzar",
+    "contar",
+    "encontrar",
+    "mostrar",
+    "probar",
+    "recordar",
+    "sonar",
+  ]);
+
+  if (fixedForms[lemma]) return fixedForms[lemma];
+  if (eToIEVerbs.has(lemma)) return buildArErStemChangeForms(lemma, regular, "e", "ie");
+  if (oToUEVerbs.has(lemma)) return buildArErStemChangeForms(lemma, regular, "o", "ue");
+
+  return buildSpellingChangeForms(lemma, regular);
 }
 
 function buildRegularForms(lemma) {
@@ -1214,6 +1695,9 @@ els.wheelButtons.forEach((button) => {
 els.selectAllTensesButton.addEventListener("click", selectAllTenses);
 els.clearAllTensesButton.addEventListener("click", clearAllTenses);
 els.resetButton.addEventListener("click", resetProgress);
+els.tenseFocusToggle.addEventListener("click", toggleTenseFocus);
+els.answerInput.addEventListener("focus", () => collapseTenseFocusForMobile(false));
+els.answerInput.addEventListener("input", () => collapseTenseFocusForMobile(false));
 els.answerForm.addEventListener("submit", (event) => {
   event.preventDefault();
   checkAnswer(els.answerInput.value);
@@ -1223,3 +1707,4 @@ renderPrompt();
 renderTenseFilters();
 renderStats();
 renderMistakes();
+setTenseFocusExpanded(!mobileLayout.matches);

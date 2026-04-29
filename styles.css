@@ -248,10 +248,10 @@ h2 {
 .wheel-grid {
   position: relative;
   z-index: 1;
-  margin: 36px 0 26px;
+  margin: 28px 0 18px;
   display: grid;
   grid-template-columns: minmax(0, 1fr);
-  gap: 18px;
+  gap: 12px;
   align-items: stretch;
 }
 
@@ -260,7 +260,7 @@ h2 {
   display: grid;
   justify-items: center;
   align-content: center;
-  gap: 12px;
+  gap: 7px;
 }
 
 .tense-control {
@@ -275,12 +275,12 @@ h2 {
 
 .verb-slot {
   width: 100%;
-  min-height: 118px;
+  min-height: 102px;
   border: 1px solid rgba(177, 139, 75, 0.38);
   border-radius: 8px;
   display: grid;
   place-items: center;
-  padding: 18px;
+  padding: 14px 18px;
   color: var(--ink);
   background:
     linear-gradient(135deg, rgba(255, 252, 245, 0.88), rgba(235, 229, 216, 0.86)),
@@ -316,7 +316,7 @@ h2 {
 .meter-stage {
   position: relative;
   width: 100%;
-  min-height: 86px;
+  min-height: 76px;
   display: grid;
   place-items: center;
   appearance: none;
@@ -331,23 +331,23 @@ h2 {
 }
 
 .tense-stage {
-  min-height: 92px;
+  min-height: 82px;
 }
 
 .person-stage {
-  min-height: 86px;
+  min-height: 76px;
 }
 
 .meter-frame {
   position: relative;
   width: 100%;
-  min-height: 76px;
+  min-height: 66px;
   border: 1px solid rgba(177, 139, 75, 0.38);
   border-radius: 8px;
   display: grid;
   place-items: center;
   overflow: hidden;
-  padding: 13px 18px;
+  padding: 10px 16px;
   background:
     linear-gradient(180deg, rgba(255, 252, 245, 0.98), rgba(242, 237, 226, 0.9)),
     #fbf8f0;
@@ -440,16 +440,40 @@ h2 {
 }
 
 .tense-focus-header {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto auto;
-  align-items: flex-start;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
   gap: 10px;
-  margin-bottom: 14px;
 }
 
-.tense-focus h2 {
-  margin: 0 0 4px;
+.tense-focus-toggle {
+  min-height: 34px;
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  appearance: none;
+  border: 0;
+  padding: 0;
+  color: var(--ink);
+  background: transparent;
+  cursor: pointer;
   font-size: 1.04rem;
+  font-weight: 850;
+}
+
+.tense-focus-caret {
+  width: 0;
+  height: 0;
+  border-left: 6px solid transparent;
+  border-right: 6px solid transparent;
+  border-top: 8px solid #b34f45;
+  transform: rotate(0deg);
+  transition: transform 180ms ease, filter 180ms ease;
+}
+
+.tense-focus-toggle:hover .tense-focus-caret,
+.tense-focus-toggle:focus-visible .tense-focus-caret {
+  filter: saturate(1.2);
 }
 
 .tense-focus p {
@@ -457,6 +481,38 @@ h2 {
   color: var(--muted);
   font-size: 0.9rem;
   line-height: 1.45;
+}
+
+.tense-focus-body {
+  display: grid;
+  gap: 14px;
+  margin-top: 14px;
+  overflow: hidden;
+  transition:
+    max-height 260ms ease,
+    opacity 180ms ease,
+    margin-top 220ms ease;
+}
+
+.tense-focus-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.tense-focus.is-collapsed .tense-focus-caret {
+  transform: rotate(-90deg);
+}
+
+.tense-focus.is-collapsed .tense-focus-body {
+  max-height: 0;
+  margin-top: 0;
+  opacity: 0;
+}
+
+.tense-focus:not(.is-collapsed) .tense-focus-body {
+  max-height: 1100px;
+  opacity: 1;
 }
 
 .tense-filter-groups {
@@ -772,7 +828,16 @@ button {
 
   .wheel-grid {
     grid-template-columns: 1fr;
-    gap: 18px;
+    gap: 10px;
+    margin: 22px 0 14px;
+  }
+
+  .control-card {
+    gap: 5px;
+  }
+
+  .wheel-label {
+    font-size: 0.78rem;
   }
 
   .tense-focus {
@@ -780,12 +845,31 @@ button {
   }
 
   .tense-focus-header {
-    align-items: stretch;
-    grid-template-columns: 1fr;
+    align-items: flex-start;
     flex-direction: column;
+    gap: 4px;
   }
 
-  .tense-focus .text-button {
+  .tense-focus-toggle {
+    min-height: 30px;
+  }
+
+  .tense-focus p {
+    font-size: 0.84rem;
+    line-height: 1.25;
+  }
+
+  .tense-focus.is-collapsed p {
+    display: none;
+  }
+
+  .tense-focus-actions {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+
+  .tense-focus-actions .text-button {
     width: 100%;
     border: 1px solid rgba(217, 213, 202, 0.86);
     background: rgba(255, 255, 255, 0.46);
@@ -823,21 +907,29 @@ button {
 
   .verb-slot {
     width: 100%;
-    min-height: 94px;
-    padding: 14px;
+    min-height: 76px;
+    padding: 10px 14px;
   }
 
   .verb-slot span {
     font-size: clamp(1.25rem, 8vw, 1.9rem);
   }
 
+  .meter-stage,
+  .tense-stage,
+  .person-stage {
+    min-height: 62px;
+  }
+
   .meter-frame {
-    min-height: 68px;
-    padding-inline: 12px;
+    min-height: 58px;
+    padding: 8px 12px;
   }
 
   .meter-value {
-    font-size: 0.9rem;
+    min-height: 28px;
+    font-size: 0.86rem;
+    line-height: 1.08;
   }
 
   .actions {

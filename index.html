@@ -73,22 +73,33 @@
 
         <section class="tense-focus" aria-labelledby="tense-focus-title">
           <div class="tense-focus-header">
-            <div>
-              <h2 id="tense-focus-title">Tense Focus</h2>
-              <p>Choose which tenses can appear in the prompt.</p>
-            </div>
-            <button class="text-button" id="select-all-tenses" type="button">
-              Practice All Tenses
+            <button
+              class="tense-focus-toggle"
+              id="tense-focus-toggle"
+              type="button"
+              aria-expanded="true"
+              aria-controls="tense-focus-body"
+            >
+              <span class="tense-focus-caret" aria-hidden="true"></span>
+              <span id="tense-focus-title">Tense Focus</span>
             </button>
-            <button class="text-button" id="clear-all-tenses" type="button">
-              Clear All Tenses
-            </button>
+            <p>Choose which tenses can appear in the prompt.</p>
           </div>
-          <div
-            class="tense-filter-groups"
-            id="tense-filter-groups"
-            aria-label="Tense selection"
-          ></div>
+          <div class="tense-focus-body" id="tense-focus-body">
+            <div class="tense-focus-actions">
+              <button class="text-button" id="select-all-tenses" type="button">
+                Practice All Tenses
+              </button>
+              <button class="text-button" id="clear-all-tenses" type="button">
+                Clear All Tenses
+              </button>
+            </div>
+            <div
+              class="tense-filter-groups"
+              id="tense-filter-groups"
+              aria-label="Tense selection"
+            ></div>
+          </div>
         </section>
 
         <div class="actions">
