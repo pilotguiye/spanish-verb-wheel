@@ -1403,6 +1403,7 @@ function buildRegularForms(lemma) {
       er: ["ía", "ías", "ía", "íamos", "íais", "ían"],
       ir: ["ía", "ías", "ía", "íamos", "íais", "ían"],
     },
+    future: ["é", "ás", "á", "emos", "éis", "án"],
     conditional: ["ía", "ías", "ía", "íamos", "íais", "ían"],
     subjPresent: {
       ar: ["e", "es", "e", "emos", "éis", "en"],
@@ -1430,7 +1431,7 @@ function buildRegularForms(lemma) {
     present: endings.present[ending].map((item) => `${stem}${item}`),
     preterite: endings.preterite[ending].map((item) => `${stem}${item}`),
     imperfect: endings.imperfect[ending].map((item) => `${stem}${item}`),
-    future: endings.conditional.map((item) => `${infinitive}${item}`),
+    future: endings.future.map((item) => `${infinitive}${item}`),
     conditional: endings.conditional.map((item) => `${infinitive}${item}`),
     subjPresent: endings.subjPresent[ending].map((item) => `${stem}${item}`),
     subjImperfect: endings.subjImperfect[ending].map((item) => `${stem}${item}`),
